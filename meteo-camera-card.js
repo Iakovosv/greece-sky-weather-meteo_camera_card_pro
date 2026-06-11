@@ -547,7 +547,8 @@ class MeteoCameraCard extends HTMLElement {
   // ============================================
 
   _getCameraUrl() {
-    // Check for direct image URL first (for cameras without HA proxy access)
+    // For direct camera URLs (camera_image_url), we don't need crossorigin
+    // because the browser will load them without CORS checks for images
     if (this._config.camera_image_url) {
       return this._config.camera_image_url;
     }
@@ -555,11 +556,20 @@ class MeteoCameraCard extends HTMLElement {
     const cam = this._state(this._config.camera_entity);
     if (!cam) return '';
 
+    // Try entity_picture or still_image_url first (these are relative HA URLs)
     const urls = [cam.attributes?.entity_picture, cam.attributes?.still_image_url];
     for (const url of urls) {
-      if (url && url.startsWith('http')) return url;
+      if (url) {
+        // If it's a relative URL, make it absolute using HA's base
+        if (url.startsWith('/')) {
+          return `${this._hass?.auth?.data?.authMode === 'legacy' ? '' : ''}${url}`;
+        }
+        // If it's already an absolute URL, return it
+        if (url.startsWith('http')) return url;
+      }
     }
 
+    // Fall back to camera_proxy through HA (same origin, no CORS)
     if (this._config.camera.camera_proxy !== false) {
       return `/api/camera_proxy/${this._config.camera_entity}`;
     }
