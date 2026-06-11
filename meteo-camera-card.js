@@ -930,7 +930,8 @@ class MeteoCameraCard extends HTMLElement {
     const smoothSpeed = this._windEngine.smoothSpeed(windSpeedRaw, now);
 
     if (smoothDir !== null) {
-      this._targetAngle = this._windEngine.normalize(smoothDir - (cfg.camera.azimuth || 0));
+      // Arrow shows WHERE wind is going (opposite of wind direction + camera azimuth)
+      this._targetAngle = this._windEngine.normalize(smoothDir + 180 - (cfg.camera.azimuth || 0));
     }
 
     // Update DOM
@@ -941,7 +942,7 @@ class MeteoCameraCard extends HTMLElement {
       this._refs.wind.style.display = '';
       this._refs.wind.querySelector('.data-value').textContent = `${smoothSpeed?.toFixed(1) || '--'} ${d.speed_unit}`;
       if (smoothDir !== null) {
-        this._refs.wind.querySelector('.data-label').textContent = this._windLabel(smoothDir);
+        this._refs.wind.querySelector('.data-label').textContent = this._windLabel(this._windEngine.normalize(smoothDir + 180));
       }
     } else {
       this._refs.wind.style.display = 'none';
