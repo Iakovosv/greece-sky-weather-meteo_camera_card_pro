@@ -1,4 +1,4 @@
-# 🌤️ Greece Sky and Weather Card v3.3
+# 🌤️ Greece Sky and Weather Card v4.0
 
 **by Iakovos Venieris** - Home Assistant Lovelace Card
 
@@ -6,16 +6,16 @@
 
 ---
 
-## v3.3 Changes (from v3.2)
+## v4.0 Changes (New Features)
 
-| Fix | Description |
-|-----|-------------|
-| 🔒 **Plugin Isolation** | Auto-disable after 3 errors |
-| 📦 **Single Source** | `/dist/` folder for HACS |
-| 🌐 **Scoped Exports** | `window.GSCard` (no pollution) |
-| ⚡ **Performance Modes** | normal / low-power throttling |
-| 🛡️ **Error Resilience** | Try/catch on all lifecycle hooks |
-| ✅ **HACS Ready** | Proper metadata, codeowner |
+| Feature | Description |
+|---------|-------------|
+| 🎯 **Click to Expand** | Click card to see full-size camera image |
+| 📍 **Arrow Position** | Full control: top, left, right, bottom |
+| 🧭 **Azimuth Position** | Full control: top, right, left, bottom |
+| 📐 **Data Size** | small / medium / large |
+| 📷 **Show/Hide Camera** | Toggle camera visibility |
+| 📐 **Azimuth Size** | Customizable compass size |
 
 ---
 
@@ -25,9 +25,9 @@
 Search "Greece Sky" in HACS → Install
 
 ### Manual
-1. Copy `dist/meteo-camera-card.js` to `/config/www/`
+1. Copy `meteo-camera-card.js` to `/config/www/`
 2. Settings → Dashboards → Resources → Add
-   - URL: `/local/dist/meteo-camera-card.js`
+   - URL: `/local/meteo-camera-card.js`
    - Type: module
 
 ---
@@ -44,101 +44,110 @@ entities:
   temperature: sensor.temperature
   humidity: sensor.humidity
 camera:
-  azimuth: 0
-plugins:
-  alerts: true
+  azimuth: 250
+display:
+  arrow_color: '#00BFFF'
 ```
 
 ---
 
-## Performance Modes
+## Display Options
+
+### 🔽 Arrow (Wind Direction Indicator)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `display.arrow_color` | #00BFFF | Arrow color (CSS color) |
+| `display.arrow_size` | 50 | Arrow length (px) |
+| `display.arrow_top` | 20% | Vertical position |
+| `display.arrow_left` | 50% | Horizontal position |
+
+**Examples:**
+```yaml
+display:
+  arrow_color: '#FF6B6B'
+  arrow_size: 80
+  arrow_top: '30%'
+  arrow_left: '25%'
+```
+
+### 🧭 Azimuth (Compass)
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `display.show_azimuth` | true | Show/hide compass |
+| `display.azimuth_size` | 50 | Compass diameter (px) |
+| `display.azimuth_top` | 12px | Vertical position |
+| `display.azimuth_right` | 12px | Horizontal position |
+
+### 📊 Data Panel
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `display.data_size` | medium | small / medium / large |
+| `display.panel_opacity` | 0.75 | Background opacity |
+
+### 📷 Camera
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `display.show_camera` | true | Show/hide camera image |
+| `display.click_to_expand` | true | Click to expand image |
+
+### 🎨 General
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `display.card_height` | 280px | Card height |
+| `display.gust_threshold` | 2.0 | Gust alert threshold |
+
+---
+
+## Complete Configuration Example
 
 ```yaml
-# Normal mode (default)
-performance_mode: normal
-
-# Low-power mode (reduce polling)
-performance_mode: low-power
-```
-
-Low-power mode throttles state updates to 1/second for battery-saving.
-
----
-
-## Plugin System (v3.3)
-
-### Plugin Isolation
-Plugins automatically disable after 3 consecutive errors:
-```javascript
-class MyPlugin extends MeteoPlugin {
-  static pluginName = 'my-plugin';
-  _maxErrors = 3; // Auto-disable threshold
-}
-```
-
-### Scoped Export
-```javascript
-window.GSCard.MeteoPlugin
-window.GSCard.WindEngine
-window.GSCard.PluginRegistry
+type: custom:meteo-camera-card
+camera_entity: camera.front_door
+camera:
+  azimuth: 250
+display:
+  arrow_color: '#00BFFF'
+  arrow_size: 60
+  arrow_top: '25%'
+  arrow_left: '50%'
+  show_azimuth: true
+  azimuth_size: 45
+  azimuth_top: '15px'
+  azimuth_right: '15px'
+  data_size: 'medium'
+  show_camera: true
+  click_to_expand: true
+  card_height: '300px'
+entities:
+  wind_direction: sensor.wind_direction
+  wind_speed: sensor.wind_speed
+  temperature: sensor.temperature
+  humidity: sensor.humidity
 ```
 
 ---
 
-## Configuration
+## Compact Card (No Camera)
 
-### Entities
-| Entity | Description |
-|--------|-------------|
-| `wind_direction` | Wind direction (0-360) |
-| `wind_speed` | Wind speed |
-| `wind_gust` | Wind gust |
-| `temperature` | Temperature |
-| `humidity` | Humidity |
-| `rain` | Rain |
-| `pressure` | Pressure |
-
-### Camera Options
-| Option | Default | Description |
-|--------|---------|-------------|
-| `camera.azimuth` | 0 | Camera direction |
-| `camera.show_compass` | true | Show compass |
-| `camera.camera_proxy` | true | Use HA proxy |
-
-### Display Options
-| Option | Default | Description |
-|--------|---------|-------------|
-| `display.arrow_color` | #00BFFF | Arrow color |
-| `display.arrow_size` | 50 | Arrow size (px) |
-| `display.card_height` | 280px | Card height |
-| `display.gust_threshold` | 2.0 | Gust threshold |
-
----
-
-## Architecture
-
-```
-Greece Sky v3.3
-├── /dist/meteo-camera-card.js  (single source)
-├── Scoped export: window.GSCard
-├── Plugin isolation (auto-disable)
-├── EMA smoothing (time-weighted)
-└── Performance modes
+```yaml
+type: custom:meteo-camera-card
+camera:
+  azimuth: 180
+display:
+  show_camera: false
+  data_size: 'large'
+  card_height: '150px'
+entities:
+  wind_direction: sensor.wind_direction
+  wind_speed: sensor.wind_speed
+  temperature: sensor.temperature
 ```
 
 ---
 
-## Technical Specs
-
-- ✅ Plugin isolation (3 errors = disable)
-- ✅ Scoped exports (no global pollution)
-- ✅ Performance modes (normal/low-power)
-- ✅ EMA smoothing (time-weighted)
-- ✅ Error resilience (all lifecycle hooks)
-- ✅ Single source distribution
-- ✅ HACS metadata v3.3
-- ✅ Codeowner: @iakovos
-
----
-
-**v3.3** - Greece Sky · Iakovos Venieris
+**v4.0** - Greece Sky · Iakovos Venieris

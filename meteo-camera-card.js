@@ -487,14 +487,18 @@ class MeteoCameraCard extends HTMLElement {
         speed_unit: d.speed_unit || 'km/h',
         arrow_color: d.arrow_color || '#00BFFF',
         arrow_size: d.arrow_size || 50,
-        arrow_position: d.arrow_position || '20%',  // vertical position from top
+        arrow_top: d.arrow_top || '20%',      // Vertical position
+        arrow_left: d.arrow_left || '50%',    // Horizontal position
         panel_opacity: d.panel_opacity || 0.75,
         card_height: d.card_height || '280px',
         gust_threshold: d.gust_threshold || 2.0,
         show_azimuth: d.show_azimuth !== false,
         azimuth_size: d.azimuth_size || 50,
+        azimuth_top: d.azimuth_top || '12px',  // Vertical position
+        azimuth_right: d.azimuth_right || '12px', // Horizontal position
         data_size: d.data_size || 'medium',  // small, medium, large
         show_camera: d.show_camera !== false,
+        click_to_expand: d.click_to_expand !== false, // Click to expand
       },
       plugins: config.plugins || {},
     };
@@ -695,7 +699,7 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         .wind-arrow {
-          position: absolute; top: ${d.arrow_position}; left: 50%;
+          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left};
           width: 4px; height: ${d.arrow_size}px;
           background: linear-gradient(to top, transparent, var(--accent));
           transform-origin: bottom center; border-radius: 2px;
@@ -712,7 +716,7 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         .gust-alert {
-          position: absolute; top: ${d.arrow_position}; left: 50%; transform: translateX(-50%);
+          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left}; transform: translate(-50%, -100%);
           background: rgba(255,100,100,0.9); color: #fff;
           padding: 5px 15px; border-radius: 20px;
           font-size: 11px; font-weight: bold;
@@ -721,13 +725,13 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         @keyframes gust-flash {
-          0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
-          50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
-          100% { opacity: 1; transform: translateX(-50%) scale(1); }
+          0% { opacity: 0; transform: translate(-50%, -100%) scale(0.8); }
+          50% { opacity: 1; transform: translate(-50%, -100%) scale(1.1); }
+          100% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
         }
         
         .compass {
-          position: absolute; top: 12px; right: 12px;
+          position: absolute; top: ${d.azimuth_top}; right: ${d.azimuth_right};
           width: ${d.azimuth_size}px; height: ${d.azimuth_size}px; border-radius: 50%;
           background: rgba(0,0,0,${d.panel_opacity});
           border: 2px solid rgba(255,255,255,0.2);
@@ -771,9 +775,23 @@ class MeteoCameraCard extends HTMLElement {
           position: absolute; top: 8px; left: 8px;
           font-size: 8px; color: rgba(255,255,255,0.25); font-family: sans-serif;
         }
+        
+        .expanded-overlay {
+          position: fixed; inset: 0; z-index: 9999;
+          background: rgba(0,0,0,0.95);
+          display: none; align-items: center; justify-content: center;
+          cursor: pointer;
+        }
+        
+        .expanded-overlay.active { display: flex; }
+        
+        .expanded-overlay img {
+          max-width: 95vw; max-height: 95vh; object-fit: contain;
+          border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
       </style>
       
-      <div class="card">
+      <div class="card" id="main-card">
         <div class="camera-wrap">
           ${camUrl 
             ? `<img class="camera-img" id="camera-img" alt="Camera">` 
@@ -809,6 +827,10 @@ class MeteoCameraCard extends HTMLElement {
           </div>
         </div>
       </div>
+      
+      <div class="expanded-overlay" id="expanded-overlay">
+        <img id="expanded-img" src="" alt="Expanded Camera View">
+      </div>
     `;
 
     // Cache DOM refs
@@ -817,6 +839,9 @@ class MeteoCameraCard extends HTMLElement {
       needle: this.shadowRoot.querySelector('.compass-needle'),
       gustAlert: this.shadowRoot.querySelector('.gust-alert'),
       pluginLayer: this.shadowRoot.querySelector('.plugin-layer'),
+      mainCard: this.shadowRoot.querySelector('#main-card'),
+      expandedOverlay: this.shadowRoot.querySelector('#expanded-overlay'),
+      expandedImg: this.shadowRoot.querySelector('#expanded-img'),
       temp: this.shadowRoot.querySelector('.temp'),
       hum: this.shadowRoot.querySelector('.hum'),
       wind: this.shadowRoot.querySelector('.wind'),
@@ -824,6 +849,28 @@ class MeteoCameraCard extends HTMLElement {
       rain: this.shadowRoot.querySelector('.rain'),
       pressure: this.shadowRoot.querySelector('.pressure'),
     };
+
+    // Setup click to expand
+    if (this._config.display?.click_to_expand !== false) {
+      const mainCard = this._refs.mainCard;
+      const overlay = this._refs.expandedOverlay;
+      const img = this._refs.expandedImg;
+      const cameraImg = this.shadowRoot.querySelector('#camera-img');
+      
+      if (mainCard && overlay && img) {
+        mainCard.style.cursor = 'pointer';
+        mainCard.addEventListener('click', () => {
+          if (cameraImg?.src) {
+            img.src = cameraImg.src;
+            overlay.classList.add('active');
+          }
+        });
+        
+        overlay.addEventListener('click', () => {
+          overlay.classList.remove('active');
+        });
+      }
+    }
 
     this._rendered = true;
     this._loadCameraImage();
