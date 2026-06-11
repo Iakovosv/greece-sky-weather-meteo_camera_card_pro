@@ -928,10 +928,13 @@ class MeteoCameraCard extends HTMLElement {
     // EMA smoothing
     const smoothDir = this._windEngine.smoothDirection(windDirRaw, now);
     const smoothSpeed = this._windEngine.smoothSpeed(windSpeedRaw, now);
+    console.log("DEBUG wind:", { windDirRaw, smoothDir, azimuth: cfg.camera.azimuth });
 
     if (smoothDir !== null) {
       // Arrow shows WHERE wind is going (opposite of wind direction + camera azimuth)
-      this._targetAngle = this._windEngine.normalize(smoothDir + 180 - (cfg.camera.azimuth || 0));
+      const targetAngle = this._windEngine.normalize(smoothDir + 180 - (cfg.camera.azimuth || 0));
+      this._targetAngle = targetAngle;
+      console.log("DEBUG target:", { smoothDir, azimuth: cfg.camera.azimuth, targetAngle });
     }
 
     // Update DOM
@@ -985,8 +988,9 @@ class MeteoCameraCard extends HTMLElement {
       const diff = this._windEngine.shortestDiff(this._arrowAngle, this._targetAngle);
       this._arrowAngle = this._windEngine.normalize(this._arrowAngle + diff * this._smoothSpeed);
 
+      const azimuth = this._config?.camera?.azimuth || 0;
       this._refs.arrow?.style.setProperty('transform', `translateX(-50%) rotate(${this._arrowAngle}deg)`);
-      this._refs.needle?.style.setProperty('transform', `rotate(${cfg.camera.azimuth || 0}deg)`);
+      this._refs.needle?.style.setProperty('transform', `rotate(${azimuth}deg)`);
 
       this._rafId = requestAnimationFrame(animate);
     };
