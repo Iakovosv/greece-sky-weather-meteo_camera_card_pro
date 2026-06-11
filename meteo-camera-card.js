@@ -931,10 +931,12 @@ class MeteoCameraCard extends HTMLElement {
     console.log("DEBUG wind:", { windDirRaw, smoothDir, azimuth: cfg.camera.azimuth });
 
     if (smoothDir !== null) {
-      // Arrow shows WHERE wind is going (opposite of wind direction + camera azimuth)
-      const targetAngle = this._windEngine.normalize(smoothDir + 180 - (cfg.camera.azimuth || 0));
+      // Arrow shows WHERE wind is going, relative to camera view
+      // target = camera direction - wind destination
+      const windDest = this._windEngine.normalize(smoothDir + 180); // where wind is going
+      const targetAngle = this._windEngine.normalize(this._config?.camera?.azimuth || 0 - windDest);
       this._targetAngle = targetAngle;
-      console.log("DEBUG target:", { smoothDir, azimuth: cfg.camera.azimuth, targetAngle });
+      console.log("DEBUG wind arrow:", { smoothDir, windDest, azimuth: this._config?.camera?.azimuth, targetAngle });
     }
 
     // Update DOM
