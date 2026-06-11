@@ -582,6 +582,31 @@ class MeteoCameraCard extends HTMLElement {
     return '';
   }
 
+  // Load camera image via fetch to bypass CORS
+  async _loadCameraImage() {
+    const url = this._getCameraUrl();
+    const img = this.shadowRoot?.getElementById('camera-img');
+    if (!img || !url) return;
+    
+    if (url.startsWith('/')) {
+      img.src = url;
+      return;
+    }
+    
+    try {
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const blob = await response.blob();
+      
+      if (this._cameraBlobUrl) URL.revokeObjectURL(this._cameraBlobUrl);
+      this._cameraBlobUrl = URL.createObjectURL(blob);
+      img.src = this._cameraBlobUrl;
+    } catch (e) {
+      console.warn('Camera: Using direct URL', e);
+      img.src = url;
+    }
+  }
+
   // ============================================
   // PLUGIN SYSTEM
   // ============================================
