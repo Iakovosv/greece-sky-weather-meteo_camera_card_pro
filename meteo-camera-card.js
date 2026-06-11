@@ -990,8 +990,8 @@ class MeteoCameraCard extends HTMLElement {
 
       const azimuth = this._config?.camera?.azimuth || 0;
       this._refs.arrow?.style.setProperty('transform', `translateX(-50%) rotate(${this._arrowAngle}deg)`);
-      // Needle shows North: rotate opposite to camera direction
-      this._refs.needle?.style.setProperty('transform', `rotate(${-azimuth}deg)`);
+      // Needle points in camera direction (where camera is looking)
+      this._refs.needle?.style.setProperty('transform', `rotate(${azimuth - 90}deg)`);
 
       this._rafId = requestAnimationFrame(animate);
     };
