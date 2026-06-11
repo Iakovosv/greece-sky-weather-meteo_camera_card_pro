@@ -1,7 +1,7 @@
 {
   "name": "Greece Sky and Weather Card",
   "description": "Production-ready Home Assistant Lovelace card with weather overlay, wind visualization, and extensible plugin system. Features EMA smoothing, plugin isolation, and HACS-ready architecture.",
-  "version": "3.4",
+  "version": "3.5",
   "codeowners": ["@iakovos"],
   "render_readme": true,
   "filename": "meteo-camera-card.js",
