@@ -785,16 +785,31 @@ class MeteoCameraCard extends HTMLElement {
         
         .expanded-overlay {
           position: fixed; inset: 0; z-index: 9999;
-          background: rgba(0,0,0,0.95);
+          background: rgba(0,0,0,0.9);
           display: none; align-items: center; justify-content: center;
           cursor: pointer;
         }
         
         .expanded-overlay.active { display: flex; }
         
+        .expanded-content {
+          position: relative; display: flex; flex-direction: column;
+          align-items: center;
+        }
+        
         .expanded-overlay img {
-          max-width: 95vw; max-height: 95vh; object-fit: contain;
+          max-width: 95vw; max-height: 85vh; object-fit: contain;
           border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        
+        .expanded-panel {
+          position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+          display: flex; gap: 20px;
+          background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 30px;
+        }
+        
+        .expanded-data {
+          color: #fff; font-size: 14px; font-weight: 600;
         }
       </style>
       
@@ -836,7 +851,14 @@ class MeteoCameraCard extends HTMLElement {
       </div>
       
       <div class="expanded-overlay" id="expanded-overlay">
-        <img id="expanded-img" src="" alt="Expanded Camera View">
+        <div class="expanded-content">
+          <img id="expanded-img" src="" alt="Expanded Camera View">
+          <div class="expanded-panel">
+            <div class="expanded-data" id="expanded-wind"></div>
+            <div class="expanded-data" id="expanded-temp"></div>
+            <div class="expanded-data" id="expanded-hum"></div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -849,6 +871,9 @@ class MeteoCameraCard extends HTMLElement {
       mainCard: this.shadowRoot.querySelector('#main-card'),
       expandedOverlay: this.shadowRoot.querySelector('#expanded-overlay'),
       expandedImg: this.shadowRoot.querySelector('#expanded-img'),
+      expandedWind: this.shadowRoot.querySelector('#expanded-wind'),
+      expandedTemp: this.shadowRoot.querySelector('#expanded-temp'),
+      expandedHum: this.shadowRoot.querySelector('#expanded-hum'),
       temp: this.shadowRoot.querySelector('.temp'),
       hum: this.shadowRoot.querySelector('.hum'),
       wind: this.shadowRoot.querySelector('.wind'),
@@ -863,12 +888,20 @@ class MeteoCameraCard extends HTMLElement {
       const overlay = this._refs.expandedOverlay;
       const img = this._refs.expandedImg;
       const cameraImg = this.shadowRoot.querySelector('#camera-img');
+      const expWind = this._refs.expandedWind;
+      const expTemp = this._refs.expandedTemp;
+      const expHum = this._refs.expandedHum;
+      const d = this._config.display;
       
       if (mainCard && overlay && img) {
         mainCard.style.cursor = 'pointer';
         mainCard.addEventListener('click', () => {
           if (cameraImg?.src) {
             img.src = cameraImg.src;
+            // Update expanded data
+            if (expWind) expWind.textContent = this._refs.wind?.querySelector('.data-value')?.textContent || '';
+            if (expTemp) expTemp.textContent = this._refs.temp?.querySelector('.data-value')?.textContent || '';
+            if (expHum) expHum.textContent = this._refs.hum?.querySelector('.data-value')?.textContent || '';
             overlay.classList.add('active');
           }
         });
@@ -931,11 +964,12 @@ class MeteoCameraCard extends HTMLElement {
 
     if (smoothDir !== null) {
       // Arrow shows WHERE wind is going, relative to camera view
-      // North is always at camera.azimuth in the camera's view (at the top of arrow)
+      // North is at camera.azimuth in the camera's view
       const windDest = this._windEngine.normalize(smoothDir + 180); // where wind is going (0-360)
       const cameraAzimuth = this._windEngine.normalize(cfg.camera.azimuth || 0);
-      // In camera view, direction X appears at angle (cameraAzimuth - X) from top (0°)
-      const targetAngle = this._windEngine.normalize(cameraAzimuth - windDest);
+      // Arrow angle: windDest appears at (windDest - cameraAzimuth) from top (0°)
+      // Use 360 - to flip direction
+      const targetAngle = this._windEngine.normalize(360 - (windDest - cameraAzimuth));
       this._targetAngle = targetAngle;
     }
 
