@@ -928,15 +928,15 @@ class MeteoCameraCard extends HTMLElement {
     // EMA smoothing
     const smoothDir = this._windEngine.normalize(this._windEngine.smoothDirection(windDirRaw, now));
     const smoothSpeed = this._windEngine.smoothSpeed(windSpeedRaw, now);
-    console.log("DEBUG wind:", { windDirRaw, smoothDir, azimuth: cfg.camera.azimuth });
 
     if (smoothDir !== null) {
       // Arrow shows WHERE wind is going, relative to camera view
-      const windDest = this._windEngine.normalize(smoothDir + 180); // where wind is going
+      // North is always at camera.azimuth in the camera's view (at the top of arrow)
+      const windDest = this._windEngine.normalize(smoothDir + 180); // where wind is going (0-360)
       const cameraAzimuth = this._windEngine.normalize(cfg.camera.azimuth || 0);
-      const targetAngle = this._windEngine.normalize(windDest - cameraAzimuth);
+      // In camera view, direction X appears at angle (cameraAzimuth - X) from top (0°)
+      const targetAngle = this._windEngine.normalize(cameraAzimuth - windDest);
       this._targetAngle = targetAngle;
-      console.log("DEBUG wind arrow:", { smoothDir, windDest, cameraAzimuth, targetAngle });
     }
 
     // Update DOM
