@@ -665,7 +665,6 @@ class MeteoCameraCard extends HTMLElement {
     const d = cfg.display;
     const camUrl = this._getCameraUrl();
     console.log("Camera: camUrl =", camUrl);
-    this._loadCameraImage();
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -821,6 +820,7 @@ class MeteoCameraCard extends HTMLElement {
     };
 
     this._rendered = true;
+    this._loadCameraImage();
     this._initPlugins();
     this._pollState();
   }
