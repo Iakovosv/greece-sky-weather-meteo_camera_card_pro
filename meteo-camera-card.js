@@ -487,9 +487,14 @@ class MeteoCameraCard extends HTMLElement {
         speed_unit: d.speed_unit || 'km/h',
         arrow_color: d.arrow_color || '#00BFFF',
         arrow_size: d.arrow_size || 50,
+        arrow_position: d.arrow_position || '20%',  // vertical position from top
         panel_opacity: d.panel_opacity || 0.75,
         card_height: d.card_height || '280px',
         gust_threshold: d.gust_threshold || 2.0,
+        show_azimuth: d.show_azimuth !== false,
+        azimuth_size: d.azimuth_size || 50,
+        data_size: d.data_size || 'medium',  // small, medium, large
+        show_camera: d.show_camera !== false,
       },
       plugins: config.plugins || {},
     };
@@ -680,7 +685,7 @@ class MeteoCameraCard extends HTMLElement {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
-        .camera-wrap { position: absolute; inset: 0; }
+        .camera-wrap { position: absolute; inset: 0; ${!d.show_camera ? 'display: none;' : ''} }
         .camera-img { width: 100%; height: 100%; object-fit: cover; }
         .camera-placeholder {
           width: 100%; height: 100%;
@@ -690,7 +695,7 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         .wind-arrow {
-          position: absolute; top: 20%; left: 50%;
+          position: absolute; top: ${d.arrow_position}; left: 50%;
           width: 4px; height: ${d.arrow_size}px;
           background: linear-gradient(to top, transparent, var(--accent));
           transform-origin: bottom center; border-radius: 2px;
@@ -707,7 +712,7 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         .gust-alert {
-          position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+          position: absolute; top: ${d.arrow_position}; left: 50%; transform: translateX(-50%);
           background: rgba(255,100,100,0.9); color: #fff;
           padding: 5px 15px; border-radius: 20px;
           font-size: 11px; font-weight: bold;
@@ -723,14 +728,15 @@ class MeteoCameraCard extends HTMLElement {
         
         .compass {
           position: absolute; top: 12px; right: 12px;
-          width: 50px; height: 50px; border-radius: 50%;
+          width: ${d.azimuth_size}px; height: ${d.azimuth_size}px; border-radius: 50%;
           background: rgba(0,0,0,${d.panel_opacity});
           border: 2px solid rgba(255,255,255,0.2);
           display: flex; align-items: center; justify-content: center;
+          ${!d.show_azimuth ? 'display: none;' : ''}
         }
         
         .compass-needle {
-          width: 30px; height: 3px;
+          width: ${Math.round(d.azimuth_size * 0.6)}px; height: 3px;
           background: linear-gradient(90deg, #ff5555 50%, #fff 50%);
           border-radius: 2px; will-change: transform;
         }
@@ -746,12 +752,12 @@ class MeteoCameraCard extends HTMLElement {
         
         .data-item {
           display: flex; flex-direction: column;
-          align-items: center; min-width: 55px;
+          align-items: center; min-width: ${d.data_size === 'small' ? '40px' : d.data_size === 'large' ? '70px' : '55px'};
         }
         
-        .data-icon { font-size: 16px; margin-bottom: 2px; }
-        .data-value { font-size: 15px; font-weight: 600; color: #fff; }
-        .data-label { font-size: 9px; color: rgba(255,255,255,0.6); text-transform: uppercase; margin-top: 1px; }
+        .data-icon { font-size: ${d.data_size === 'small' ? '12px' : d.data_size === 'large' ? '20px' : '16px'}; margin-bottom: 2px; }
+        .data-value { font-size: ${d.data_size === 'small' ? '12px' : d.data_size === 'large' ? '20px' : '15px'}; font-weight: 600; color: #fff; }
+        .data-label { font-size: ${d.data_size === 'small' ? '7px' : d.data_size === 'large' ? '11px' : '9px'}; color: rgba(255,255,255,0.6); text-transform: uppercase; margin-top: 1px; }
         
         .data-item.wind { min-width: 70px; }
         .data-item.wind .data-value { color: var(--accent); font-size: 18px; }
