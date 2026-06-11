@@ -461,6 +461,7 @@ class MeteoCameraCard extends HTMLElement {
 
     this._config = {
       camera_entity: config.camera_entity,
+      camera_image_url: config.camera_image_url,
       entities: {
         temperature: config.entities?.temperature || null,
         humidity: config.entities?.humidity || null,
