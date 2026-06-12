@@ -75,6 +75,18 @@ shear = |surfaceDir - upperDir| (using shortest path)
 
 ---
 
+## 🚀 Pro Installation
+
+For **Upper Atmosphere Wind (850 hPa)** features, see:
+👉 **[PRO_INSTALL.md](./PRO_INSTALL.md)** - Full installation guide
+
+Quick setup:
+1. Install from HACS
+2. Add card (works instantly!)
+3. Optional: Add package for 850hPa wind
+
+---
+
 ## Installation
 
 ### HACS (Recommended)
