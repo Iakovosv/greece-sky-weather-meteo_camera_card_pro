@@ -1,18 +1,17 @@
 /**
- * Greece Sky and Weather Card v3.3
+ * Greece Sky and Weather Card v4.1
  * A Home Assistant Lovelace Card by Iakovos Venieris
  * 
  * Architecture: Production-Ready with Plugin Isolation & Performance Modes
  * 
- * v3.3 Changes:
- * - Plugin isolation sandbox (exception handling + health monitoring)
- * - Scoped exports (no global pollution)
- * - Performance modes (low-power option)
- * - Single source distribution (/dist/)
- * - Error resilience in all lifecycle hooks
- * - HACS submission ready
+ * v4.1 Changes:
+ * - Upper Atmosphere Wind (850 hPa) support
+ * - Wind Shear indicator (optional)
+ * - Location override per card
+ * - Clean separation: Data / Meteorology / Visualization layers
+ * - Entity-driven feature activation
  * 
- * @version 3.3
+ * @version 4.1
  */
 
 // ============================================
@@ -20,7 +19,7 @@
 // ============================================
 
 const MeteoCard = {
-  version: '3.3',
+  version: '4.0',
   name: 'meteo-camera-card',
 };
 
@@ -398,6 +397,10 @@ class MeteoCameraCard extends HTMLElement {
     this._smoothSpeed = 0.08;
     this._rafId = null;
 
+    // Upper Atmosphere Wind animation state
+    this._upperArrowAngle = 0;
+    this._upperTargetAngle = 0;
+
     // === PERFORMANCE MODE ===
     this._perfMode = 'normal'; // normal | low-power
     this._pollThrottle = 1000; // ms between polls in low-power
@@ -430,6 +433,12 @@ class MeteoCameraCard extends HTMLElement {
       this._rafId = null;
     }
 
+    // Cleanup camera blob
+    if (this._cameraBlobUrl) {
+      URL.revokeObjectURL(this._cameraBlobUrl);
+      this._cameraBlobUrl = null;
+    }
+
     // Detach all plugins
     this._pluginInstances.forEach(plugin => {
       try { plugin.detach(); } catch (e) { /* ignore */ }
@@ -459,8 +468,13 @@ class MeteoCameraCard extends HTMLElement {
       this._perfMode = config.performance_mode;
     }
 
+    // Location (with HA config fallback)
+    const location = config.location || {};
+
     this._config = {
       camera_entity: config.camera_entity,
+      camera_image_url: config.camera_image_url,
+      // Layer 1: DATA - HA entities
       entities: {
         temperature: config.entities?.temperature || null,
         humidity: config.entities?.humidity || null,
@@ -469,6 +483,14 @@ class MeteoCameraCard extends HTMLElement {
         wind_gust: config.entities?.wind_gust || null,
         rain: config.entities?.rain || null,
         pressure: config.entities?.pressure || null,
+        // Layer 2: METEOROLOGY - 850 hPa (optional)
+        wind_direction_850hpa: config.entities?.wind_direction_850hpa || null,
+        wind_speed_850hpa: config.entities?.wind_speed_850hpa || null,
+      },
+      // Location override (optional)
+      location: {
+        latitude: location.latitude || null,
+        longitude: location.longitude || null,
       },
       camera: {
         azimuth: config.camera?.azimuth || 0,
@@ -480,9 +502,24 @@ class MeteoCameraCard extends HTMLElement {
         speed_unit: d.speed_unit || 'km/h',
         arrow_color: d.arrow_color || '#00BFFF',
         arrow_size: d.arrow_size || 50,
+        arrow_top: d.arrow_top || '20%',
+        arrow_left: d.arrow_left || '50%',
         panel_opacity: d.panel_opacity || 0.75,
         card_height: d.card_height || '280px',
         gust_threshold: d.gust_threshold || 2.0,
+        show_azimuth: d.show_azimuth !== false,
+        azimuth_size: d.azimuth_size || 50,
+        azimuth_top: d.azimuth_top || '12px',
+        azimuth_right: d.azimuth_right || '12px',
+        data_size: d.data_size || 'medium',
+        show_camera: d.show_camera !== false,
+        click_to_expand: d.click_to_expand !== false,
+        // Upper Atmosphere Wind options
+        upper_wind_color: d.upper_wind_color || '#FF4444',
+        upper_wind_scale: d.upper_wind_scale || 0.7,
+        // Wind Shear options
+        show_wind_shear: d.show_wind_shear || false,
+        wind_shear_threshold: d.wind_shear_threshold || 45,
       },
       plugins: config.plugins || {},
     };
@@ -547,17 +584,74 @@ class MeteoCameraCard extends HTMLElement {
 
   _getCameraUrl() {
     const cam = this._state(this._config.camera_entity);
-    if (!cam) return '';
 
-    const urls = [cam.attributes?.entity_picture, cam.attributes?.still_image_url];
-    for (const url of urls) {
-      if (url && url.startsWith('http')) return url;
+    // Use entity_picture from camera entity (same-origin, no CORS issues)
+    if (cam?.attributes?.entity_picture) {
+      return cam.attributes.entity_picture;
     }
 
-    if (this._config.camera.camera_proxy !== false) {
+    // Try still_image_url if entity_picture not available
+    if (cam?.attributes?.still_image_url) {
+      return cam.attributes.still_image_url;
+    }
+
+    // Fall back to camera_image_url only if no camera entity picture
+    if (this._config.camera_image_url) {
+      return this._config.camera_image_url;
+    }
+
+    // Last resort: use camera_proxy through HA
+    if (this._config.camera?.camera_proxy !== false) {
       return `/api/camera_proxy/${this._config.camera_entity}`;
     }
     return '';
+  }
+
+  // Load camera image via fetch to bypass CORS
+  async _loadCameraImage() {
+    const url = this._getCameraUrl();
+    console.log("Camera: _loadCameraImage called, url =", url);
+    const img = this.shadowRoot?.getElementById('camera-img');
+    if (!img || !url) return;
+    
+    if (url.startsWith('/')) {
+      img.src = url;
+      return;
+    }
+    
+    try {
+      // Extract credentials from URL if present
+      let fetchUrl = url;
+      let headers = {};
+      
+      const urlMatch = url.match(/^https?:\/\/([^:]+):([^@]+)@(.*)$/);
+      if (urlMatch) {
+        const [, username, password, rest] = urlMatch;
+        fetchUrl = 'http://' + rest;
+        const credentials = btoa(username + ':' + password);
+        headers = { 'Authorization': 'Basic ' + credentials };
+        console.log('Camera: Using Basic Auth for', fetchUrl);
+      }
+      
+      const response = await fetch(fetchUrl, { 
+        headers,
+        credentials: 'include' 
+      });
+      
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+      
+      const blob = await response.blob();
+      console.log('Camera: Loaded blob, size:', blob.size);
+      
+      if (this._cameraBlobUrl) URL.revokeObjectURL(this._cameraBlobUrl);
+      this._cameraBlobUrl = URL.createObjectURL(blob);
+      img.src = this._cameraBlobUrl;
+    } catch (e) {
+      console.error('Camera: Fetch failed', e);
+      img.src = url;
+    }
   }
 
   // ============================================
@@ -600,6 +694,7 @@ class MeteoCameraCard extends HTMLElement {
     const cfg = this._config;
     const d = cfg.display;
     const camUrl = this._getCameraUrl();
+    console.log("Camera: camUrl =", camUrl);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -615,7 +710,7 @@ class MeteoCameraCard extends HTMLElement {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
         
-        .camera-wrap { position: absolute; inset: 0; }
+        .camera-wrap { position: absolute; inset: 0; ${!d.show_camera ? 'display: none;' : ''} }
         .camera-img { width: 100%; height: 100%; object-fit: cover; }
         .camera-placeholder {
           width: 100%; height: 100%;
@@ -625,7 +720,7 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         .wind-arrow {
-          position: absolute; top: 20%; left: 50%;
+          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left};
           width: 4px; height: ${d.arrow_size}px;
           background: linear-gradient(to top, transparent, var(--accent));
           transform-origin: bottom center; border-radius: 2px;
@@ -641,8 +736,42 @@ class MeteoCameraCard extends HTMLElement {
           filter: drop-shadow(0 0 5px var(--accent));
         }
         
+        /* Upper Atmosphere Wind Arrow */
+        .wind-arrow-upper {
+          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left};
+          width: 3px; height: ${Math.round(d.arrow_size * (d.upper_wind_scale || 0.7))}px;
+          background: linear-gradient(to top, transparent, ${d.upper_wind_color || '#FF4444'});
+          transform-origin: bottom center; border-radius: 2px;
+          box-shadow: 0 0 8px ${d.upper_wind_color || '#FF4444'}, 0 0 16px ${d.upper_wind_color || '#FF4444'};
+          will-change: transform;
+          opacity: 0.8;
+        }
+        
+        .wind-arrow-upper::before {
+          content: ''; position: absolute; top: -10px; left: 50%;
+          transform: translateX(-50%);
+          border-left: 6px solid transparent; border-right: 6px solid transparent;
+          border-bottom: 12px solid ${d.upper_wind_color || '#FF4444'};
+          filter: drop-shadow(0 0 4px ${d.upper_wind_color || '#FF4444'});
+        }
+        
+        /* Wind Shear Indicator */
+        .wind-shear {
+          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left}; transform: translate(-50%, -150%);
+          background: rgba(255,165,0,0.9); color: #fff;
+          padding: 4px 12px; border-radius: 15px;
+          font-size: 10px; font-weight: bold;
+          display: none; z-index: 99;
+          animation: shear-pulse 1.5s ease infinite;
+        }
+        
+        @keyframes shear-pulse {
+          0%, 100% { opacity: 0.8; }
+          50% { opacity: 1; }
+        }
+        
         .gust-alert {
-          position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left}; transform: translate(-50%, -100%);
           background: rgba(255,100,100,0.9); color: #fff;
           padding: 5px 15px; border-radius: 20px;
           font-size: 11px; font-weight: bold;
@@ -651,23 +780,31 @@ class MeteoCameraCard extends HTMLElement {
         }
         
         @keyframes gust-flash {
-          0% { opacity: 0; transform: translateX(-50%) scale(0.8); }
-          50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
-          100% { opacity: 1; transform: translateX(-50%) scale(1); }
+          0% { opacity: 0; transform: translate(-50%, -100%) scale(0.8); }
+          50% { opacity: 1; transform: translate(-50%, -100%) scale(1.1); }
+          100% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
         }
         
         .compass {
-          position: absolute; top: 12px; right: 12px;
-          width: 50px; height: 50px; border-radius: 50%;
+          position: absolute; top: ${d.azimuth_top}; right: ${d.azimuth_right};
+          width: ${d.azimuth_size}px; height: ${d.azimuth_size}px; border-radius: 50%;
           background: rgba(0,0,0,${d.panel_opacity});
           border: 2px solid rgba(255,255,255,0.2);
-          display: flex; align-items: center; justify-content: center;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          ${!d.show_azimuth ? 'display: none;' : ''}
         }
         
         .compass-needle {
-          width: 30px; height: 3px;
+          width: ${Math.round(d.azimuth_size * 0.6)}px; height: 3px;
           background: linear-gradient(90deg, #ff5555 50%, #fff 50%);
           border-radius: 2px; will-change: transform;
+        }
+        
+        .compass-label {
+          font-size: ${Math.round(d.azimuth_size * 0.25)}px;
+          color: rgba(255,255,255,0.7);
+          font-weight: bold;
+          margin-top: 2px;
         }
         
         .compass.hidden { display: none; }
@@ -681,12 +818,12 @@ class MeteoCameraCard extends HTMLElement {
         
         .data-item {
           display: flex; flex-direction: column;
-          align-items: center; min-width: 55px;
+          align-items: center; min-width: ${d.data_size === 'small' ? '40px' : d.data_size === 'large' ? '70px' : '55px'};
         }
         
-        .data-icon { font-size: 16px; margin-bottom: 2px; }
-        .data-value { font-size: 15px; font-weight: 600; color: #fff; }
-        .data-label { font-size: 9px; color: rgba(255,255,255,0.6); text-transform: uppercase; margin-top: 1px; }
+        .data-icon { font-size: ${d.data_size === 'small' ? '12px' : d.data_size === 'large' ? '20px' : '16px'}; margin-bottom: 2px; }
+        .data-value { font-size: ${d.data_size === 'small' ? '12px' : d.data_size === 'large' ? '20px' : '15px'}; font-weight: 600; color: #fff; }
+        .data-label { font-size: ${d.data_size === 'small' ? '7px' : d.data_size === 'large' ? '11px' : '9px'}; color: rgba(255,255,255,0.6); text-transform: uppercase; margin-top: 1px; }
         
         .data-item.wind { min-width: 70px; }
         .data-item.wind .data-value { color: var(--accent); font-size: 18px; }
@@ -700,22 +837,69 @@ class MeteoCameraCard extends HTMLElement {
           position: absolute; top: 8px; left: 8px;
           font-size: 8px; color: rgba(255,255,255,0.25); font-family: sans-serif;
         }
+        
+        .expanded-overlay {
+          position: fixed; inset: 0; z-index: 9999;
+          background: rgba(0,0,0,0.9);
+          display: none;
+          cursor: pointer;
+        }
+        
+        .expanded-overlay.active { display: flex; }
+        
+        .expanded-content {
+          position: relative; width: 100%; height: 100%;
+          display: flex; align-items: center; justify-content: center;
+        }
+        
+        .expanded-camera-wrap {
+          position: relative; width: 100%; height: 100%;
+          display: flex; align-items: center; justify-content: center;
+        }
+        
+        .expanded-overlay img {
+          max-width: 100%; max-height: 100%; object-fit: contain;
+        }
+        
+        .expanded-plugin-layer {
+          position: absolute; inset: 0;
+          pointer-events: none;
+        }
+        
+        .expanded-plugin-layer .wind-arrow,
+        .expanded-plugin-layer .compass,
+        .expanded-plugin-layer .data-panel,
+        .expanded-plugin-layer .gust-alert {
+          transform: scale(1.5);
+        }
+        
+        .expanded-panel {
+          position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+          display: flex; gap: 20px;
+          background: rgba(0,0,0,0.7); padding: 10px 20px; border-radius: 30px;
+        }
+        
+        .expanded-data {
+          color: #fff; font-size: 14px; font-weight: 600;
+        }
       </style>
       
-      <div class="card">
+      <div class="card" id="main-card">
         <div class="camera-wrap">
           ${camUrl 
-            ? `<img class="camera-img" src="${camUrl}" alt="Camera" crossorigin="anonymous">` 
+            ? `<img class="camera-img" id="camera-img" alt="Camera">` 
             : `<div class="camera-placeholder">📷 Κάμερα unavailable</div>`
           }
         </div>
         
         <div class="plugin-layer"></div>
-        <div class="credit">Greece Sky v3.3 · Iakovos Venieris</div>
+        <div class="credit">Greece Sky v4.0 · Iakovos Venieris</div>
         <div class="gust-alert">⚡ ΡΙΠΗ ΑΝΕΜΟΥ</div>
         
-        ${cfg.camera.show_compass !== false ? `<div class="compass"><div class="compass-needle"></div></div>` : ''}
+        ${cfg.camera.show_compass !== false ? `<div class="compass"><div class="compass-needle"></div><div class="compass-label">N</div></div>` : ''}
         <div class="wind-arrow"></div>
+        <div class="wind-arrow-upper" style="display:none"></div>
+        <div class="wind-shear" style="display:none"></div>
         
         <div class="panel">
           <div class="data-item temp" style="display:none">
@@ -738,14 +922,42 @@ class MeteoCameraCard extends HTMLElement {
           </div>
         </div>
       </div>
+      
+      <div class="expanded-overlay" id="expanded-overlay">
+        <div class="expanded-content">
+          <div class="expanded-camera-wrap">
+            ${camUrl 
+              ? `<img id="expanded-img" src="" alt="Camera">` 
+              : `<div class="camera-placeholder">📷 Κάμερα unavailable</div>`
+            }
+          </div>
+          <div class="expanded-plugin-layer"></div>
+          <div class="expanded-panel">
+            <div class="expanded-data" id="expanded-wind"></div>
+            <div class="expanded-data" id="expanded-temp"></div>
+            <div class="expanded-data" id="expanded-hum"></div>
+            <div class="expanded-data" id="expanded-gust"></div>
+          </div>
+        </div>
+      </div>
     `;
 
     // Cache DOM refs
     this._refs = {
       arrow: this.shadowRoot.querySelector('.wind-arrow'),
+      upperArrow: this.shadowRoot.querySelector('.wind-arrow-upper'),
       needle: this.shadowRoot.querySelector('.compass-needle'),
       gustAlert: this.shadowRoot.querySelector('.gust-alert'),
+      windShear: this.shadowRoot.querySelector('.wind-shear'),
       pluginLayer: this.shadowRoot.querySelector('.plugin-layer'),
+      mainCard: this.shadowRoot.querySelector('#main-card'),
+      expandedOverlay: this.shadowRoot.querySelector('#expanded-overlay'),
+      expandedImg: this.shadowRoot.querySelector('#expanded-img'),
+      expandedWind: this.shadowRoot.querySelector('#expanded-wind'),
+      expandedTemp: this.shadowRoot.querySelector('#expanded-temp'),
+      expandedHum: this.shadowRoot.querySelector('#expanded-hum'),
+      expandedGust: this.shadowRoot.querySelector('#expanded-gust'),
+      expandedPluginLayer: this.shadowRoot.querySelector('.expanded-plugin-layer'),
       temp: this.shadowRoot.querySelector('.temp'),
       hum: this.shadowRoot.querySelector('.hum'),
       wind: this.shadowRoot.querySelector('.wind'),
@@ -754,7 +966,45 @@ class MeteoCameraCard extends HTMLElement {
       pressure: this.shadowRoot.querySelector('.pressure'),
     };
 
+    // Setup click to expand
+    if (this._config.display?.click_to_expand !== false) {
+      const mainCard = this._refs.mainCard;
+      const overlay = this._refs.expandedOverlay;
+      const img = this._refs.expandedImg;
+      const cameraImg = this.shadowRoot.querySelector('#camera-img');
+      const expWind = this._refs.expandedWind;
+      const expTemp = this._refs.expandedTemp;
+      const expHum = this._refs.expandedHum;
+      const expGust = this._refs.expandedGust;
+      const pluginLayer = this._refs.pluginLayer;
+      const expPluginLayer = this._refs.expandedPluginLayer;
+      
+      if (mainCard && overlay && img) {
+        mainCard.style.cursor = 'pointer';
+        mainCard.addEventListener('click', () => {
+          if (cameraImg?.src) {
+            img.src = cameraImg.src;
+            // Update expanded data
+            if (expWind) expWind.textContent = this._refs.wind?.querySelector('.data-value')?.textContent || '';
+            if (expTemp) expTemp.textContent = this._refs.temp?.querySelector('.data-value')?.textContent || '';
+            if (expHum) expHum.textContent = this._refs.hum?.querySelector('.data-value')?.textContent || '';
+            if (expGust) expGust.textContent = this._refs.gust?.querySelector('.data-value')?.textContent || '';
+            // Clone plugin layer to expanded view
+            if (pluginLayer && expPluginLayer) {
+              expPluginLayer.innerHTML = pluginLayer.innerHTML;
+            }
+            overlay.classList.add('active');
+          }
+        });
+        
+        overlay.addEventListener('click', () => {
+          overlay.classList.remove('active');
+        });
+      }
+    }
+
     this._rendered = true;
+    this._loadCameraImage();
     this._initPlugins();
     this._pollState();
   }
@@ -780,9 +1030,13 @@ class MeteoCameraCard extends HTMLElement {
     // Store previous
     this._prevCache = { ...this._cache };
 
-    // Get RAW values
+    // ============================================
+    // LAYER 1: DATA - Get RAW values from HA entities
+    // ============================================
     const windDirRaw = this._rawValue(cfg.entities.wind_direction);
     const windSpeedRaw = this._rawValue(cfg.entities.wind_speed);
+    const windDir850Raw = this._rawValue(cfg.entities.wind_direction_850hpa);
+    const windSpeed850Raw = this._rawValue(cfg.entities.wind_speed_850hpa);
     const gust = this._rawValue(cfg.entities.wind_gust);
     const temp = this._rawValue(cfg.entities.temperature);
     const hum = this._rawValue(cfg.entities.humidity);
@@ -793,21 +1047,75 @@ class MeteoCameraCard extends HTMLElement {
     Object.assign(this._cache, {
       windDir: windDirRaw,
       windSpeed: windSpeedRaw,
+      windDir850: windDir850Raw,
+      windSpeed850: windSpeed850Raw,
       temp, hum, rain, pressure, gust,
       windSpeedDelta: windSpeedRaw !== null && this._prevCache.windSpeed !== null 
         ? windSpeedRaw - this._prevCache.windSpeed 
         : null,
     });
 
-    // EMA smoothing
-    const smoothDir = this._windEngine.smoothDirection(windDirRaw, now);
+    // ============================================
+    // LAYER 2: METEOROLOGY - Calculate shear (NO camera awareness)
+    // ============================================
+    const smoothDir = this._windEngine.normalize(this._windEngine.smoothDirection(windDirRaw, now));
     const smoothSpeed = this._windEngine.smoothSpeed(windSpeedRaw, now);
+    
+    // 850hPa direction with EMA
+    const smoothDir850 = windDir850Raw !== null 
+      ? this._windEngine.normalize(this._windEngine.smoothDirection(windDir850Raw, now))
+      : null;
 
-    if (smoothDir !== null) {
-      this._targetAngle = this._windEngine.normalize(smoothDir - (cfg.camera.azimuth || 0));
+    // Wind Shear calculation (meteorological - NOT visual)
+    let windShear = null;
+    if (smoothDir !== null && smoothDir850 !== null) {
+      windShear = Math.abs(this._windEngine.shortestDiff(smoothDir, smoothDir850));
     }
 
-    // Update DOM
+    // ============================================
+    // LAYER 3: VISUALIZATION - Calculate arrow angles (camera-aware)
+    // ============================================
+    if (smoothDir !== null) {
+      // Arrow shows WHERE wind is going, relative to camera view
+      const windDest = this._windEngine.normalize(smoothDir + 180);
+      const cameraAzimuth = this._windEngine.normalize(cfg.camera.azimuth || 0);
+      const targetAngle = this._windEngine.normalize(360 - (windDest - cameraAzimuth));
+      this._targetAngle = targetAngle;
+    }
+
+    // Upper Atmosphere Wind arrow
+    if (smoothDir850 !== null) {
+      const upperWindDest = this._windEngine.normalize(smoothDir850 + 180);
+      const cameraAzimuth = this._windEngine.normalize(cfg.camera.azimuth || 0);
+      const upperTargetAngle = this._windEngine.normalize(360 - (upperWindDest - cameraAzimuth));
+      this._upperTargetAngle = upperTargetAngle;
+      
+      // Show upper wind arrow
+      if (this._refs.upperArrow) {
+        this._refs.upperArrow.style.display = '';
+      }
+    } else {
+      // Hide upper wind arrow if no data
+      if (this._refs.upperArrow) {
+        this._refs.upperArrow.style.display = 'none';
+      }
+    }
+
+    // Wind Shear indicator
+    if (d.show_wind_shear && windShear !== null && this._refs.windShear) {
+      if (windShear > d.wind_shear_threshold) {
+        this._refs.windShear.style.display = '';
+        this._refs.windShear.textContent = `⚠️ Wind Shear: ${windShear.toFixed(0)}°`;
+      } else {
+        this._refs.windShear.style.display = 'none';
+      }
+    } else if (this._refs.windShear) {
+      this._refs.windShear.style.display = 'none';
+    }
+
+    // ============================================
+    // UPDATE DOM - Data panel
+    // ============================================
     this._updateEl(this._refs.temp, temp !== null, `${temp?.toFixed(1) || '--'}${d.temperature_unit}`);
     this._updateEl(this._refs.hum, hum !== null, `${hum?.toFixed(0) || '--'}%`);
 
@@ -815,7 +1123,7 @@ class MeteoCameraCard extends HTMLElement {
       this._refs.wind.style.display = '';
       this._refs.wind.querySelector('.data-value').textContent = `${smoothSpeed?.toFixed(1) || '--'} ${d.speed_unit}`;
       if (smoothDir !== null) {
-        this._refs.wind.querySelector('.data-label').textContent = this._windLabel(smoothDir);
+        this._refs.wind.querySelector('.data-label').textContent = this._windLabel(this._windEngine.normalize(smoothDir + 180));
       }
     } else {
       this._refs.wind.style.display = 'none';
@@ -855,11 +1163,19 @@ class MeteoCameraCard extends HTMLElement {
         return;
       }
 
+      // Surface Wind arrow animation
       const diff = this._windEngine.shortestDiff(this._arrowAngle, this._targetAngle);
       this._arrowAngle = this._windEngine.normalize(this._arrowAngle + diff * this._smoothSpeed);
-
       this._refs.arrow?.style.setProperty('transform', `translateX(-50%) rotate(${this._arrowAngle}deg)`);
-      this._refs.needle?.style.setProperty('transform', `rotate(${this._arrowAngle}deg)`);
+
+      // Upper Atmosphere Wind arrow animation
+      const upperDiff = this._windEngine.shortestDiff(this._upperArrowAngle, this._upperTargetAngle);
+      this._upperArrowAngle = this._windEngine.normalize(this._upperArrowAngle + upperDiff * this._smoothSpeed);
+      this._refs.upperArrow?.style.setProperty('transform', `translateX(-50%) rotate(${this._upperArrowAngle}deg)`);
+
+      // Compass needle
+      const azimuth = this._config?.camera?.azimuth || 0;
+      this._refs.needle?.style.setProperty('transform', `rotate(${azimuth - 90}deg)`);
 
       this._rafId = requestAnimationFrame(animate);
     };
@@ -895,7 +1211,7 @@ if (typeof window !== 'undefined') {
   };
 }
 
-console.log('Greece Sky v3.3 loaded ✓');
+console.log('Greece Sky v4.0 loaded ✓');
 
 // Card descriptor for HACS card picker
 window.customCards = window.customCards || [];

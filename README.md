@@ -1,10 +1,10 @@
-# 🌤️ Greece Sky and Weather Card v4.0
+# 🌤️ Greece Sky and Weather Card v4.1
 
 **by Iakovos Venieris** - Home Assistant Lovelace Card
 
 ---
 
-## v4.0 Features
+## v4.1 Features
 
 | Feature | Description |
 |---------|-------------|
@@ -15,6 +15,9 @@
 | 📐 **Wind Direction** | Arrow shows WHERE wind is going (360°) |
 | 📐 **Data Size** | small / medium / large |
 | 📷 **Show/Hide Camera** | Toggle camera visibility |
+| 🔴 **Upper Atmosphere Wind** | 850 hPa wind direction arrow (optional) |
+| ⚠️ **Wind Shear Indicator** | Alert when wind direction differs significantly |
+| 📍 **Location Override** | Per-card location for multi-camera setups |
 
 ---
 
@@ -36,6 +39,39 @@
 ### 📊 Wind Label
 - Shows direction: Β, ΒΑ, Α, ΝΑ, Ν, ΝΔ, Δ, ΒΔ (and intermediate)
 - 16 directions (every 22.5°)
+
+---
+
+## 🔴 Upper Atmosphere Wind (850 hPa)
+
+The card supports displaying **Upper Atmosphere Wind** at the 850 hPa pressure level (~1500m above sea level).
+
+### 🧠 Architecture
+
+The card follows a clean 3-layer architecture:
+
+| Layer | Description |
+|-------|-------------|
+| **Data Layer** | HA entities (sensors) |
+| **Meteorology Layer** | Calculations (wind shear) - NO camera awareness |
+| **Visualization Layer** | Arrow rendering - camera-aware |
+
+### 🔽 Wind Arrows
+
+| Arrow | Color | Description |
+|-------|-------|-------------|
+| 🔵 **Surface Wind** | #00BFFF (blue) | Ground-level wind from weather station |
+| 🔴 **Upper Atmosphere** | #FF4444 (red) | 850 hPa wind (~1500m altitude) |
+
+### ⚠️ Wind Shear
+
+Wind shear is calculated as the **meteorological difference** between surface and 850 hPa wind directions:
+
+```
+shear = |surfaceDir - upperDir| (using shortest path)
+```
+
+**NOT** the visual difference between arrows in the card.
 
 ---
 
@@ -121,6 +157,24 @@ display:
 | `display.temperature_unit` | °C | Temperature unit |
 | `display.speed_unit` | km/h | Speed unit |
 
+### 🔴 Upper Atmosphere Wind
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `entities.wind_direction_850hpa` | - | 850 hPa wind direction sensor (optional) |
+| `entities.wind_speed_850hpa` | - | 850 hPa wind speed sensor (optional) |
+| `display.upper_wind_color` | #FF4444 | Upper wind arrow color |
+| `display.upper_wind_scale` | 0.7 | Upper arrow size (relative to main) |
+| `display.show_wind_shear` | false | Show wind shear indicator |
+| `display.wind_shear_threshold` | 45 | Degrees threshold for shear alert |
+
+### 📍 Location Override
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `location.latitude` | HA config | Override latitude (optional) |
+| `location.longitude` | HA config | Override longitude (optional) |
+
 ---
 
 ## Examples
@@ -161,6 +215,52 @@ entities:
   temperature: sensor.temperature
 ```
 
+### Weather Station with Upper Atmosphere Wind
+```yaml
+type: custom:meteo-camera-card
+camera_entity: camera.front_door
+camera:
+  azimuth: 250
+display:
+  arrow_color: '#00BFFF'
+  upper_wind_color: '#FF4444'
+  upper_wind_scale: 0.7
+  show_wind_shear: true
+  wind_shear_threshold: 45
+entities:
+  wind_direction: sensor.wind_direction
+  wind_speed: sensor.wind_speed
+  wind_gust: sensor.wind_gust
+  temperature: sensor.temperature
+  humidity: sensor.humidity
+  # Upper Atmosphere Wind (850 hPa)
+  wind_direction_850hpa: sensor.wind_direction_850hpa
+  wind_speed_850hpa: sensor.wind_speed_850hpa
+```
+
+### Multi-Camera Dashboard (Location Override)
+```yaml
+# Athens Camera
+type: custom:meteo-camera-card
+camera_entity: camera.athens
+location:
+  latitude: 37.93
+  longitude: 23.75
+entities:
+  wind_direction: sensor.athens_wind_direction
+  wind_direction_850hpa: sensor.athens_850hpa_direction
+
+# Thessaloniki Camera
+type: custom:meteo-camera-card
+camera_entity: camera.thessaloniki
+location:
+  latitude: 40.64
+  longitude: 22.94
+entities:
+  wind_direction: sensor.thessaloniki_wind_direction
+  wind_direction_850hpa: sensor.thessaloniki_850hpa_direction
+```
+
 ---
 
 ## Performance Modes
@@ -195,4 +295,4 @@ If you find these tools valuable, you can support "Greece Sky and Weather" by bu
 
 ---
 
-**v4.0** - Greece Sky · Iakovos Venieris
+**v4.1** - Greece Sky · Iakovos Venieris
