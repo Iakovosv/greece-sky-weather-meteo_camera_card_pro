@@ -1,5 +1,5 @@
 /**
- * Greece Sky and Weather Card v4.1
+ * Greece Sky and Weather Card Pro v4.1
  * A Home Assistant Lovelace Card by Iakovos Venieris
  * 
  * Architecture: Production-Ready with Plugin Isolation & Performance Modes
@@ -20,7 +20,7 @@
 
 const MeteoCard = {
   version: '4.0',
-  name: 'meteo-camera-card',
+  name: 'meteo-camera-card-pro',
 };
 
 // ============================================
@@ -893,7 +893,7 @@ class MeteoCameraCard extends HTMLElement {
         </div>
         
         <div class="plugin-layer"></div>
-        <div class="credit">Greece Sky v4.0 · Iakovos Venieris</div>
+        <div class="credit">Greece Sky v4.1 Pro · Iakovos Venieris</div>
         <div class="gust-alert">⚡ ΡΙΠΗ ΑΝΕΜΟΥ</div>
         
         ${cfg.camera.show_compass !== false ? `<div class="compass"><div class="compass-needle"></div><div class="compass-label">N</div></div>` : ''}
@@ -1192,8 +1192,8 @@ class MeteoCameraCard extends HTMLElement {
 // REGISTER (scoped, HACS-compatible)
 // ============================================
 
-if (!customElements.get('meteo-camera-card')) {
-  customElements.define('meteo-camera-card', MeteoCameraCard);
+if (!customElements.get('meteo-camera-card-pro')) {
+  customElements.define('meteo-camera-card-pro', MeteoCameraCard);
 }
 
 // Export for external plugin registration (optional)
@@ -1211,13 +1211,13 @@ if (typeof window !== 'undefined') {
   };
 }
 
-console.log('Greece Sky v4.0 loaded ✓');
+console.log('Greece Sky v4.1 Pro loaded ✓');
 
 // Card descriptor for HACS card picker
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: 'meteo-camera-card',
-  name: 'Greece Sky Weather Card',
+  type: 'meteo-camera-card-pro',
+  name: 'Greece Sky Weather Card Pro',
   description: 'Weather camera card with wind visualization and plugins',
   preview: true,
 });

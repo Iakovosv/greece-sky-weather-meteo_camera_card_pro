@@ -1,6 +1,6 @@
 {
-  "name": "Greece Sky and Weather Card",
-  "description": "Production-ready Home Assistant Lovelace card with weather overlay, wind visualization, and extensible plugin system. Features EMA smoothing, plugin isolation, and HACS-ready architecture.",
+  "name": "Greece Sky and Weather Card Pro",
+  "description": "Advanced Home Assistant Lovelace card with Upper Atmosphere Wind (850 hPa), Wind Shear indicator, and extensible plugin system. Features EMA smoothing, multi-layer wind visualization, and HACS-ready architecture.",
   "version": "4.1",
   "codeowners": ["@iakovos"],
   "render_readme": true,

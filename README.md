@@ -1,4 +1,4 @@
-# 🌤️ Greece Sky and Weather Card v4.1
+# 🌤️ Greece Sky and Weather Card Pro v4.1
 
 **by Iakovos Venieris** - Home Assistant Lovelace Card
 
@@ -295,4 +295,4 @@ If you find these tools valuable, you can support "Greece Sky and Weather" by bu
 
 ---
 
-**v4.1** - Greece Sky · Iakovos Venieris
+**v4.1 Pro** - Greece Sky · Iakovos Venieris
