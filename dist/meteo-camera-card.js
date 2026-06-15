@@ -522,6 +522,9 @@ class MeteoCameraCard extends HTMLElement {
         // Wind Shear options
         show_wind_shear: d.show_wind_shear || false,
         wind_shear_threshold: d.wind_shear_threshold || 45,
+        wind_shear_top: d.wind_shear_top || "65%",
+        wind_shear_left: d.wind_shear_left || "50%",
+        wind_shear_font_size: d.wind_shear_font_size || 11,
       },
       plugins: config.plugins || {},
     };
@@ -759,10 +762,10 @@ class MeteoCameraCard extends HTMLElement {
         
         /* Wind Shear Indicator */
         .wind-shear {
-          position: absolute; top: ${d.arrow_top}; left: ${d.arrow_left}; transform: translate(-50%, -150%);
+          position: absolute; top: ${d.wind_shear_top}; left: ${d.wind_shear_left}; transform: translate(-50%, -150%);
           background: rgba(255,165,0,0.9); color: #fff;
           padding: 4px 12px; border-radius: 15px;
-          font-size: 10px; font-weight: bold;
+          font-size: ${d.wind_shear_font_size}px; font-weight: bold;
           display: none; z-index: 99;
           animation: shear-pulse 1.5s ease infinite;
         }
