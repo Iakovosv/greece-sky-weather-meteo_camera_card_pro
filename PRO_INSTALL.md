@@ -317,11 +317,15 @@ longitude={{ '22.42' }}
 2. Both sensors have valid data
 3. Shear > threshold (default 45°)
 
-**Adjust threshold:**
+**Adjust threshold and position:**
 ```yaml
 display:
   show_wind_shear: true
   wind_shear_threshold: 30  # Lower = more sensitive
+  wind_shear_top: '85%'     # Position below arrows
+  wind_shear_left: '50%'
+  wind_shear_font_size: 10
+  expanded_native_style: true  # Show icons in expanded view
 ```
 
 ---

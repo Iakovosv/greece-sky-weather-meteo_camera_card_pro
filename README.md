@@ -179,6 +179,10 @@ display:
 | `display.upper_wind_scale` | 0.7 | Upper arrow size (relative to main) |
 | `display.show_wind_shear` | false | Show wind shear indicator |
 | `display.wind_shear_threshold` | 45 | Degrees threshold for shear alert |
+| `display.wind_shear_top` | 65% | Vertical position of wind shear |
+| `display.wind_shear_left` | 50% | Horizontal position of wind shear |
+| `display.wind_shear_font_size` | 11 | Font size for wind shear text |
+| `display.expanded_native_style` | true | Show icons in expanded view |
 
 ### 📍 Location Override
 
@@ -239,6 +243,10 @@ display:
   upper_wind_scale: 0.7
   show_wind_shear: true
   wind_shear_threshold: 45
+  wind_shear_top: '85%'          # Position below arrows
+  wind_shear_left: '50%'
+  wind_shear_font_size: 10
+  expanded_native_style: true    # Show icons in expanded view
 entities:
   wind_direction: sensor.wind_direction
   wind_speed: sensor.wind_speed
