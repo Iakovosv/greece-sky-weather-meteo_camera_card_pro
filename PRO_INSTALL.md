@@ -93,12 +93,12 @@ Create this NEW file:
 ```yaml
 # Greece Sky Pro - Upper Atmosphere Wind (850 hPa)
 rest:
-  - resource_template: >-
-      https://api.open-meteo.com/v1/forecast
-      ?latitude={{ state_attr('zone.home','latitude') if states('zone.home') != 'unknown' else '37.93' }}
-      &longitude={{ state_attr('zone.home','longitude') if states('zone.home') != 'unknown' else '23.75' }}
-      &current=wind_speed_850hPa,wind_direction_850hPa
-    scan_interval: 900
+  - scan_interval: 900
+    resource: "https://api.open-meteo.com/v1/forecast"
+    params:
+      latitude: "{{ state_attr('zone.home','latitude') if states('zone.home') != 'unknown' else 37.93 }}"
+      longitude: "{{ state_attr('zone.home','longitude') if states('zone.home') != 'unknown' else 23.75 }}"
+      current: "wind_speed_850hPa,wind_direction_850hPa"
     sensor:
       - name: "Upper Wind Direction 850hPa"
         unique_id: upper_wind_direction_850hpa

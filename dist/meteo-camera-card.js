@@ -412,6 +412,7 @@ class MeteoCameraCard extends HTMLElement {
 
     // === ENGINES ===
     this._windEngine = new WindEngine();
+    this._windEngine850 = new WindEngine(); // Separate engine for 850hPa
     this._eventBus = new EventBus();
 
     // === PLUGINS ===
@@ -447,6 +448,7 @@ class MeteoCameraCard extends HTMLElement {
 
     // Cleanup
     this._windEngine.reset();
+    this._windEngine850.reset();
     this._eventBus.clear();
     this._hass = null;
     this._rendered = false;
@@ -1063,7 +1065,7 @@ class MeteoCameraCard extends HTMLElement {
     
     // 850hPa direction with EMA
     const smoothDir850 = windDir850Raw !== null 
-      ? this._windEngine.normalize(this._windEngine.smoothDirection(windDir850Raw, now))
+      ? this._windEngine850.normalize(this._windEngine850.smoothDirection(windDir850Raw, now))
       : null;
 
     // Wind Shear calculation (meteorological - NOT visual)

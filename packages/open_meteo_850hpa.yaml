@@ -1,47 +1,15 @@
-# ============================================
-# Greece Sky Pro - Open-Meteo 850hPa Package
-# ============================================
-# Installation:
-# 1. Copy this file to /config/packages/
-# 2. Add to configuration.yaml: packages: !include_dir_named packages
-# 3. Restart Home Assistant
-# ============================================
+# Greece Sky Pro - Upper Atmosphere Wind (850 hPa)
+# Location: /config/packages/open_meteo_850hpa.yaml
 
 rest:
-  - resource_template: >-
-      https://api.open-meteo.com/v1/forecast
-      ?latitude={{ state_attr('zone.home','latitude') if states('zone.home') != 'unknown' else '37.93' }}
-      &longitude={{ state_attr('zone.home','longitude') if states('zone.home') != 'unknown' else '23.75' }}
-      &current=wind_speed_850hPa,wind_direction_850hPa
-    scan_interval: 900
-
+  - scan_interval: 900
+    resource: "https://api.open-meteo.com/v1/forecast"
+    params:
+      latitude: "{{ state_attr('zone.home','latitude') if states('zone.home') != 'unknown' else 37.93 }}"
+      longitude: "{{ state_attr('zone.home','longitude') if states('zone.home') != 'unknown' else 23.75 }}"
+      current: "wind_speed_850hPa,wind_direction_850hPa"
     sensor:
       - name: "Upper Wind Direction 850hPa"
-        unique_id: upper_wind_direction_850hpa
-        unit_of_measurement: "°"
-        icon: mdi:weather-windy-variant
-        state_class: measurement
         value_template: "{{ value_json.current.wind_direction_850hPa | default(0) }}"
-
       - name: "Upper Wind Speed 850hPa"
-        unique_id: upper_wind_speed_850hpa
-        unit_of_measurement: "km/h"
-        icon: mdi:weather-windy
-        state_class: measurement
         value_template: "{{ value_json.current.wind_speed_850hPa | default(0) }}"
-
-# ============================================
-# Optional: Auto-location override for cards
-# Creates helper sensors that cards can use
-# ============================================
-template:
-  - sensor:
-      - name: "HA Latitude"
-        unique_id: ha_latitude
-        state: "{{ state_attr('zone.home','latitude') if states('zone.home') != 'unknown' else '37.93' }}"
-        icon: mdi:map-marker
-
-      - name: "HA Longitude"
-        unique_id: ha_longitude
-        state: "{{ state_attr('zone.home','longitude') if states('zone.home') != 'unknown' else '23.75' }}"
-        icon: mdi:map-marker
