@@ -516,6 +516,7 @@ class MeteoCameraCard extends HTMLElement {
         data_size: d.data_size || 'medium',
         show_camera: d.show_camera !== false,
         click_to_expand: d.click_to_expand !== false,
+        expanded_native_style: d.expanded_native_style !== false,
         // Upper Atmosphere Wind options
         upper_wind_color: d.upper_wind_color || '#FF4444',
         upper_wind_scale: d.upper_wind_scale || 0.7,
@@ -886,7 +887,10 @@ class MeteoCameraCard extends HTMLElement {
         
         .expanded-data {
           color: #fff; font-size: 14px; font-weight: 600;
+          display: flex; align-items: center; gap: 6px;
         }
+        .expanded-icon { font-size: 18px; opacity: 0.9; }
+        .expanded-value { color: var(--accent, #4fc3f7); }
       </style>
       
       <div class="card" id="main-card">
@@ -938,10 +942,10 @@ class MeteoCameraCard extends HTMLElement {
           </div>
           <div class="expanded-plugin-layer"></div>
           <div class="expanded-panel">
-            <div class="expanded-data" id="expanded-wind"></div>
-            <div class="expanded-data" id="expanded-temp"></div>
-            <div class="expanded-data" id="expanded-hum"></div>
-            <div class="expanded-data" id="expanded-gust"></div>
+            <div class="expanded-data" id="expanded-wind"><span class="expanded-icon">💨</span><span class="expanded-value"></span></div>
+            <div class="expanded-data" id="expanded-temp"><span class="expanded-icon">🌡️</span><span class="expanded-value"></span></div>
+            <div class="expanded-data" id="expanded-hum"><span class="expanded-icon">💧</span><span class="expanded-value"></span></div>
+            <div class="expanded-data" id="expanded-gust"><span class="expanded-icon">🌬️</span><span class="expanded-value"></span></div>
           </div>
         </div>
       </div>
@@ -990,10 +994,10 @@ class MeteoCameraCard extends HTMLElement {
           if (cameraImg?.src) {
             img.src = cameraImg.src;
             // Update expanded data
-            if (expWind) expWind.textContent = this._refs.wind?.querySelector('.data-value')?.textContent || '';
-            if (expTemp) expTemp.textContent = this._refs.temp?.querySelector('.data-value')?.textContent || '';
-            if (expHum) expHum.textContent = this._refs.hum?.querySelector('.data-value')?.textContent || '';
-            if (expGust) expGust.textContent = this._refs.gust?.querySelector('.data-value')?.textContent || '';
+            if (expWind) expWind.querySelector('.expanded-value').textContent = this._refs.wind?.querySelector('.data-value')?.textContent || '';
+            if (expTemp) expTemp.querySelector('.expanded-value').textContent = this._refs.temp?.querySelector('.data-value')?.textContent || '';
+            if (expHum) expHum.querySelector('.expanded-value').textContent = this._refs.hum?.querySelector('.data-value')?.textContent || '';
+            if (expGust) expGust.querySelector('.expanded-value').textContent = this._refs.gust?.querySelector('.data-value')?.textContent || '';
             // Clone plugin layer to expanded view
             if (pluginLayer && expPluginLayer) {
               expPluginLayer.innerHTML = pluginLayer.innerHTML;
