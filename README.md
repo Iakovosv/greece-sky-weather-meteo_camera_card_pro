@@ -302,17 +302,17 @@ If you find these tools valuable, you can support "Greece Sky and Weather" by bu
 
 ---
 
-## ⚖️ Άδεια Χρήσης
 
-**© Iakovos Venieris - All Rights Reserved**
+## ⚖️ License
 
-⛔ **ΑΠΑΓΟΡΕΥΕΤΑΙ ΑΥΣΤΗΡΑ:**
-- Η εμπορική χρήση χωρίς γραπτή άδεια
-- Η τροποποίηση του κώδικα
-- Η αναδημοσίευση σε άλλα projects
+© Iakovos Venieris - All Rights Reserved
 
-📧 Για άδειες: επικοινωνήστε με τον δημιουργό
+⛔ **STRICTLY PROHIBITED:**
+* **Commercial use** without prior written permission.
+* **Modification** of the code.
+* **Redistribution** or incorporation into other projects.
 
----
+📧 **For licensing inquiries:** Please contact the creator.
+Email: greekskyweather@gmai.com
 
 **v4.1 Pro** - Greece Sky · Iakovos Venieris
